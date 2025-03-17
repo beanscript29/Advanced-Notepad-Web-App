@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notepad App</title>
+    <link rel="stylesheet" href="styles/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Notepad App</h1>
+        <label class="switch">
+            <input type="checkbox" id="darkModeToggle">
+            <span class="slider round"></span>
+        </label>
+    </header>
+    <div id="app">
+        <div class="search-container">
+            <input type="text" id="searchNotes" placeholder="Search Notes by Title or Content" />
+            <button id="clearSearch" class="button">Clear</button>
+        </div>
+        <select id="sortNotes">
+            <option value="title">Sort by Title</option>
+            <option value="date">Sort by Date</option>
+        </select>
+        <select id="filterCategory">
+            <option value="">Filter by Category</option>
+            <option value="general">General</option>
+            <option value="work">Work</option>
+            <option value="personal">Personal</option>
+        </select>
+        <input type="text" id="noteTitle" placeholder="Note Title" />
+        <select id="noteCategory">
+            <option value="general">General</option>
+            <option value="work">Work</option>
+            <option value="personal">Personal</option>
+        </select>
+        <input type="text" id="noteTags" placeholder="Note Tags (comma separated)" />
+        <textarea id="notepad" placeholder="Start typing..."></textarea>
+        <button id="createNote" class="button">Create Note</button>
+        <button id="saveNote" class="button">Save Note</button>
+        <button id="clearNote" class="button">Clear</button>
+        <button id="exportNotes" class="button">Export Notes</button>
+        <input type="file" id="importNotes" class="button" />
+        <ul id="notesList"></ul>
+    </div>
+    <div id="loadingSpinner" style="display: none; text-align: center;">
+        <p>Loading...</p>
+    </div>
+    <footer>
+        <p>&copy; 2025 Notepad App</p>
+    </footer>
+    <script src="scripts/app.js"></script>
+</body>
+</html>
