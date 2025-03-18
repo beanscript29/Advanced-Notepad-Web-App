@@ -1,267 +1,568 @@
-const notes = [];
+// Array to store notes
+let notes = [];
 
-document.addEventListener('DOMContentLoaded', () => {
-    const notepad = document.getElementById('notepad');
-    const noteTitle = document.getElementById('noteTitle');
-    const noteCategory = document.getElementById('noteCategory');
-    const noteTags = document.getElementById('noteTags');
-    const createNoteButton = document.getElementById('createNote');
-    const saveNoteButton = document.getElementById('saveNote');
-    const clearNoteButton = document.getElementById('clearNote');
-    const searchNotesInput = document.getElementById('searchNotes');
-    const clearSearchButton = document.getElementById('clearSearch');
-    const sortNotesSelect = document.getElementById('sortNotes');
-    const filterCategorySelect = document.getElementById('filterCategory');
-    const darkModeToggle = document.getElementById('darkModeToggle');
-    const exportNotesButton = document.getElementById('exportNotes');
-    const importNotesInput = document.getElementById('importNotes');
+// Function to render notes in the #notesList
+function renderNotes(filterText = '') {
+    const notesList = document.getElementById('notesList');
+    notesList.innerHTML = ''; // Clear the list before rendering
 
-    // Load saved content from localStorage
-    notepad.value = localStorage.getItem('notepadContent') || '';
-    noteTitle.value = localStorage.getItem('noteTitleContent') || '';
-    noteCategory.value = localStorage.getItem('noteCategoryContent') || 'general';
-    noteTags.value = localStorage.getItem('noteTagsContent') || '';
+    const notesToRender = filterText
+        ? notes.filter(note =>
+            note.title.toLowerCase().includes(filterText.toLowerCase()) ||
+            note.content.toLowerCase().includes(filterText.toLowerCase()) ||
+            (note.tags && note.tags.some(tag => tag.toLowerCase().includes(filterText.toLowerCase())))
+        )
+        : notes;
 
-    // Load dark mode preference
-    if (localStorage.getItem('darkMode') === 'enabled') {
-        document.body.classList.add('dark-mode');
-        darkModeToggle.checked = true;
-    }
+    notesToRender.forEach((note, index) => {
+        const noteItem = document.createElement('li');
+        noteItem.classList.add('note-item');
 
-    // Save content to localStorage on input
-    notepad.addEventListener('input', () => {
-        localStorage.setItem('notepadContent', notepad.value);
-    });
-
-    noteTitle.addEventListener('input', () => {
-        localStorage.setItem('noteTitleContent', noteTitle.value);
-    });
-
-    noteCategory.addEventListener('change', () => {
-        localStorage.setItem('noteCategoryContent', noteCategory.value);
-    });
-
-    noteTags.addEventListener('input', () => {
-        localStorage.setItem('noteTagsContent', noteTags.value);
-    });
-
-    createNoteButton.addEventListener('click', () => {
-        createNote();
-        notepad.value = '';
-        noteTitle.value = '';
-        noteCategory.value = 'general';
-        noteTags.value = '';
-        notepad.removeAttribute('data-note-id');
-        displayNotes();
-    });
-
-    saveNoteButton.addEventListener('click', saveNote);
-
-    clearNoteButton.addEventListener('click', () => {
-        notepad.value = '';
-        noteTitle.value = '';
-        noteCategory.value = 'general';
-        noteTags.value = '';
-        notepad.removeAttribute('data-note-id');
-    });
-
-    searchNotesInput.addEventListener('input', () => {
-        displayNotes(searchNotesInput.value, sortNotesSelect.value, filterCategorySelect.value);
-    });
-
-    clearSearchButton.addEventListener('click', () => {
-        searchNotesInput.value = '';
-        displayNotes('', sortNotesSelect.value, filterCategorySelect.value);
-    });
-
-    sortNotesSelect.addEventListener('change', () => {
-        displayNotes(searchNotesInput.value, sortNotesSelect.value, filterCategorySelect.value);
-    });
-
-    filterCategorySelect.addEventListener('change', () => {
-        displayNotes(searchNotesInput.value, sortNotesSelect.value, filterCategorySelect.value);
-    });
-
-    darkModeToggle.addEventListener('change', () => {
-        document.body.classList.toggle('dark-mode');
-        if (document.body.classList.contains('dark-mode')) {
-            localStorage.setItem('darkMode', 'enabled');
-        } else {
-            localStorage.setItem('darkMode', 'disabled');
+        if (document.getElementById('notepad').dataset.noteId == note.id) {
+            noteItem.classList.add('selected');
         }
+
+        const timestamp = note.timestamp || note.createdAt
+            ? new Date(note.timestamp || note.createdAt).toLocaleString()
+            : 'No Date';
+
+        const preview = note.content.length > 50 ? note.content.substring(0, 50) + '...' : note.content;
+
+        const filesHTML = note.files
+            ? note.files
+                .map((file) => {
+                    if (file.type.startsWith('image/')) {
+                        return `<img src="${file.data}" alt="${file.name}" class="note-image" data-type="${file.type}" />`;
+                    } else {
+                        return `<a href="${file.data}" download="${file.name}" class="note-file" data-type="${file.type}">
+                                    <i class="fas fa-file"></i> ${file.name}
+                                </a>`;
+                    }
+                })
+                .join('')
+            : '';
+
+        noteItem.innerHTML = `
+            <div class="note-content">
+                <span class="note-title">${note.title}</span>
+                <p class="note-preview">${preview}</p>
+                <span class="note-timestamp">${timestamp}</span>
+                <div class="note-files">${filesHTML}</div>
+            </div>
+            <button class="delete-note" data-note-id="${note.id}" title="Delete Note">
+                <i class="fas fa-trash"></i>
+            </button>
+        `;
+
+        noteItem.querySelector('.delete-note').addEventListener('click', (e) => {
+            e.stopPropagation();
+            deleteNote(index);
+        });
+
+        noteItem.addEventListener('click', () => {
+            openNote(note);
+        });
+
+        notesList.appendChild(noteItem);
     });
 
-    exportNotesButton.addEventListener('click', () => {
-        const notesData = JSON.stringify(notes);
-        const blob = new Blob([notesData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'notes.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    });
-
-    importNotesInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const importedNotes = JSON.parse(e.target.result);
-                notes.length = 0;
-                notes.push(...importedNotes);
-                saveNotes();
-                displayNotes();
-            };
-            reader.readAsText(file);
-        }
-    });
-
-    displayNotes();
-});
-
-function createNote() {
-    const notepad = document.getElementById('notepad');
-    const noteTitle = document.getElementById('noteTitle');
-    const noteCategory = document.getElementById('noteCategory');
-    const noteTags = document.getElementById('noteTags');
-    const note = {
-        id: Date.now(),
-        title: noteTitle.value,
-        content: notepad.value,
-        category: noteCategory.value,
-        tags: noteTags.value.split(',').map(tag => tag.trim()),
-        createdAt: new Date(),
-    };
-    notes.push(note);
-    saveNotes();
-    return note;
+    setupFileClickHandlers();
 }
 
-function editNote(id, newTitle, newContent, newCategory, newTags) {
-    const note = notes.find(note => note.id === id);
-    if (note) {
-        note.title = newTitle;
-        note.content = newContent;
-        note.category = newCategory;
-        note.tags = newTags.split(',').map(tag => tag.trim());
-        saveNotes();
-    }
-}
-
-function saveNote() {
+// Function to open a note for editing
+function openNote(note) {
     const notepad = document.getElementById('notepad');
     const noteTitle = document.getElementById('noteTitle');
     const noteCategory = document.getElementById('noteCategory');
     const noteTags = document.getElementById('noteTags');
-    const noteId = notepad.dataset.noteId;
-    if (noteId) {
-        editNote(Number(noteId), noteTitle.value, notepad.value, noteCategory.value, noteTags.value);
-    } else {
-        createNote();
+
+    notepad.value = note.content;
+    noteTitle.value = note.title;
+    noteCategory.value = note.category || 'general';
+    noteTags.value = note.tags ? note.tags.join(', ') : '';
+
+    notepad.dataset.noteId = note.id;
+
+    highlightSelectedNote();
+    handleResponsiveLayout();
+}
+
+// Function to delete a note
+function deleteNote(index) {
+    notes.splice(index, 1);
+    saveNotesToLocalStorage();
+
+    const notepad = document.getElementById('notepad');
+    if (index === notes.findIndex(note => note.id == notepad.dataset.noteId)) {
+        clearNoteForm();
     }
+
+    renderNotes();
+}
+
+// Function to clear the note form
+function clearNoteForm() {
+    const notepad = document.getElementById('notepad');
+    const noteTitle = document.getElementById('noteTitle');
+    const noteCategory = document.getElementById('noteCategory');
+    const noteTags = document.getElementById('noteTags');
+
     notepad.value = '';
     noteTitle.value = '';
     noteCategory.value = 'general';
     noteTags.value = '';
     notepad.removeAttribute('data-note-id');
-    displayNotes();
+
     highlightSelectedNote();
 }
 
-function saveNotes() {
+// Function to save or update a note
+function saveNote() {
+    const title = document.getElementById('noteTitle').value;
+    const content = document.getElementById('notepad').value;
+    const fileInput = document.getElementById('uploadFiles');
+    const filePreview = document.getElementById('filePreview');
+
+    if (title && content) {
+        const timestamp = Date.now();
+
+        const uploadedFiles = [];
+        if (fileInput.files.length > 0) {
+            const files = Array.from(fileInput.files);
+            files.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    uploadedFiles.push({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result,
+                    });
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        setTimeout(() => {
+            notes.push({ title, content, timestamp, files: uploadedFiles });
+            saveNotesToLocalStorage();
+            renderNotes();
+
+            fileInput.value = '';
+            filePreview.innerHTML = '<p>No files uploaded yet.</p>';
+        }, 100);
+    }
+}
+
+// Function to save notes to localStorage
+function saveNotesToLocalStorage() {
     localStorage.setItem('notes', JSON.stringify(notes));
 }
 
-function loadNotes() {
-    const savedNotes = localStorage.getItem('notes');
-    if (savedNotes) {
-        notes.push(...JSON.parse(savedNotes));
+// Function to load notes from localStorage
+function loadNotesFromLocalStorage() {
+    const storedNotes = localStorage.getItem('notes');
+    if (storedNotes) {
+        notes = JSON.parse(storedNotes).map(note => {
+            if (!note.id) {
+                note.id = note.timestamp || Date.now();
+            }
+            return note;
+        });
     }
 }
 
-function displayNotes(searchQuery = '', sortBy = 'title', filterCategory = '') {
-    const notesList = document.getElementById('notesList');
-    const loadingSpinner = document.getElementById('loadingSpinner');
+// Function to export notes to a JSON file
+function exportNotes() {
+    if (notes.length === 0) {
+        alert('No notes to export.');
+        return;
+    }
+    
+    // Create a JSON string of the notes array
+    const notesData = JSON.stringify(notes, null, 2);
+    
+    // Create a Blob with the JSON data
+    const blob = new Blob([notesData], { type: 'application/json' });
+    
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob);
+    
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = url;
+    const filename = prompt('Enter a filename for your export:', `notes_export_${new Date().toISOString().split('T')[0]}.json`);
+    if (!filename) return; // Cancel export if no filename is provided
+    link.download = filename;
+    
+    // Append link to body, click it, and remove it
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Release the URL object
+    URL.revokeObjectURL(url);
 
-    // Show loading spinner
-    loadingSpinner.style.display = 'block';
-    notesList.style.display = 'none';
+    alert('Notes exported successfully!');
+}
 
-    setTimeout(() => {
-        notesList.innerHTML = '';
+// Function to import notes from a JSON file
+function importNotes(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const importedNotes = JSON.parse(e.target.result);
+            
+            // Validate the imported data
+            if (!Array.isArray(importedNotes)) {
+                throw new Error('Invalid format: Expected an array of notes');
+            }
+            
+            // Confirm import with the user
+            if (confirm(`Import ${importedNotes.length} notes? This will merge with your existing notes.`)) {
+                // Ensure all imported notes have an ID
+                const processedNotes = importedNotes.map(note => {
+                    if (!note.id) {
+                        note.id = Date.now() + Math.random().toString(36).substr(2, 9);
+                    }
+                    return note;
+                });
+                
+                // Merge with existing notes
+                notes = [...notes, ...processedNotes];
+                saveNotesToLocalStorage();
+                renderNotes();
+                
+                alert(`Successfully imported ${processedNotes.length} notes.`);
+            }
+        } catch (error) {
+            alert(`Error importing notes: ${error.message}`);
+        }
+        
+        // Reset the file input
+        event.target.value = '';
+    };
+    
+    reader.readAsText(file);
+}
 
-        const filteredNotes = notes
-            .filter(note => (note.title.includes(searchQuery) || note.content.includes(searchQuery) || note.tags.some(tag => tag.includes(searchQuery))) && (filterCategory === '' || note.category === filterCategory))
-            .sort((a, b) => {
-                if (sortBy === 'title') {
-                    return a.title.localeCompare(b.title);
-                } else if (sortBy === 'date') {
-                    return new Date(a.createdAt) - new Date(b.createdAt);
-                }
-            });
-
-        if (filteredNotes.length === 0) {
-            notesList.innerHTML = '<p style="text-align: center; color: #666;">No notes to display.</p>';
+// Function to handle responsive layout
+function handleResponsiveLayout() {
+    const sidebar = document.querySelector('.sidebar');
+    const editor = document.querySelector('.editor');
+    
+    if (!sidebar || !editor) return;
+    
+    if (window.innerWidth < 768) {
+        // Mobile layout logic
+        const activeNoteId = document.getElementById('notepad').dataset.noteId;
+        
+        // If a note is selected, show editor, otherwise show sidebar
+        if (activeNoteId) {
+            sidebar.style.display = 'none';
+            editor.style.display = 'flex';
         } else {
-            filteredNotes.forEach(note => {
-                const li = document.createElement('li');
-                li.innerHTML = `<strong>${note.title}</strong><br>${note.content}<br><small>${new Date(note.createdAt).toLocaleString()}</small><br><em>${note.category}</em><br><span>${note.tags.join(', ')}</span>`;
-
-                const deleteButton = document.createElement('button');
-                deleteButton.textContent = 'Delete';
-                deleteButton.addEventListener('click', (event) => {
-                    event.stopPropagation();
-                    deleteNote(note.id);
-                });
-
-                li.appendChild(deleteButton);
-                li.addEventListener('click', () => {
-                    const notepad = document.getElementById('notepad');
-                    const noteTitle = document.getElementById('noteTitle');
-                    const noteCategory = document.getElementById('noteCategory');
-                    const noteTags = document.getElementById('noteTags');
-                    notepad.value = note.content;
-                    noteTitle.value = note.title;
-                    noteCategory.value = note.category;
-                    noteTags.value = note.tags.join(', ');
-                    notepad.dataset.noteId = note.id;
-                    highlightSelectedNote();
-                });
-
-                notesList.appendChild(li);
-            });
+            sidebar.style.display = 'flex';
+            editor.style.display = 'none';
         }
-
-        // Hide loading spinner
-        loadingSpinner.style.display = 'none';
-        notesList.style.display = 'block';
-    }, 500); // Simulate loading delay
+    } else {
+        // Desktop layout
+        sidebar.style.display = 'flex';
+        editor.style.display = 'flex';
+    }
 }
 
-function deleteNote(id) {
-    if (confirm('Are you sure you want to delete this note?')) {
-        const noteIndex = notes.findIndex(note => note.id === id);
-        if (noteIndex !== -1) {
-            notes.splice(noteIndex, 1);
-            saveNotes();
-            displayNotes();
+// Update highlightSelectedNote function
+function highlightSelectedNote() {
+    const noteId = document.getElementById('notepad').dataset.noteId;
+    
+    document.querySelectorAll('#notesList li').forEach(li => {
+        li.classList.remove('selected');
+    });
+    
+    if (noteId) {
+        const selectedNote = document.querySelector(`#notesList li .delete-note[data-note-id="${noteId}"]`);
+        if (selectedNote) {
+            selectedNote.closest('li').classList.add('selected');
         }
     }
 }
 
-function highlightSelectedNote() {
-    const notesList = document.getElementById('notesList');
-    const notepad = document.getElementById('notepad');
-    const noteId = notepad.dataset.noteId;
+// Function to handle image clicks and open the modal
+function setupImageClickHandlers() {
+    const images = document.querySelectorAll('.note-images img');
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const closeModal = document.querySelector('.modal .close');
 
-    Array.from(notesList.children).forEach(li => {
-        li.classList.remove('selected');
-        if (li.textContent.includes(notepad.value) && li.querySelector('button').dataset.noteId === noteId) {
-            li.classList.add('selected');
+    images.forEach((image) => {
+        image.addEventListener('click', () => {
+            modal.style.display = 'block';
+            modalImage.src = image.src; // Set the modal image source to the clicked image
+        });
+    });
+
+    // Close the modal when the close button is clicked
+    closeModal.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    // Close the modal when clicking outside the image
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
         }
     });
 }
 
-// Load notes when the application starts
-loadNotes();
+// Function to handle file clicks and open the modal
+function setupFileClickHandlers() {
+    const files = document.querySelectorAll('.note-files img, .note-files a');
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+    const closeModal = document.querySelector('.modal .close');
+
+    files.forEach((file) => {
+        file.addEventListener('click', (event) => {
+            event.preventDefault();
+
+            const fileType = file.dataset.type || file.type;
+
+            if (fileType.startsWith('image/')) {
+                modal.style.display = 'block';
+                modalImage.src = file.src || file.href;
+                modalImage.style.display = 'block';
+            } else if (fileType.startsWith('audio/')) {
+                modal.style.display = 'block';
+                modalImage.style.display = 'none';
+                modal.innerHTML = `
+                    <span class="close">&times;</span>
+                    <audio controls class="modal-content">
+                        <source src="${file.href}" type="${fileType}">
+                        Your browser does not support the audio element.
+                    </audio>
+                `;
+            } else if (fileType === 'application/pdf') {
+                modal.style.display = 'block';
+                modalImage.style.display = 'none';
+                modal.innerHTML = `
+                    <span class="close">&times;</span>
+                    <iframe src="${file.href}" class="modal-content" style="width: 100%; height: 90%;"></iframe>
+                `;
+            } else if (fileType.startsWith('text/')) {
+                fetch(file.href)
+                    .then((response) => response.text())
+                    .then((text) => {
+                        modal.style.display = 'block';
+                        modalImage.style.display = 'none';
+                        modal.innerHTML = `
+                            <span class="close">&times;</span>
+                            <div class="modal-content" style="padding: 1rem; background: white; color: black; overflow-y: auto; max-height: 90%;">
+                                <pre>${text}</pre>
+                            </div>
+                        `;
+                    });
+            } else {
+                modal.style.display = 'block';
+                modalImage.style.display = 'none';
+                modal.innerHTML = `
+                    <span class="close">&times;</span>
+                    <div class="modal-content" style="padding: 1rem; background: white; color: black; text-align: center;">
+                        <p>Unsupported file type. <a href="${file.href}" download>Click here to download the file.</a></p>
+                    </div>
+                `;
+            }
+        });
+    });
+
+    closeModal.addEventListener('click', () => {
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <span class="close">&times;</span>
+            <img class="modal-content" id="modalImage" alt="Full-size image">
+        `;
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <span class="close">&times;</span>
+                <img class="modal-content" id="modalImage" alt="Full-size image">
+            `;
+        }
+    });
+}
+
+// Function to handle modal close functionality
+function setupModalCloseHandler() {
+    const modal = document.getElementById('imageModal');
+    const closeModal = document.querySelector('.modal .close');
+
+    // Close the modal when the close button is clicked
+    closeModal.addEventListener('click', () => {
+        modal.style.display = 'none';
+        modal.innerHTML = `
+            <span class="close">&times;</span>
+            <img class="modal-content" id="modalImage" alt="Full-size image">
+        `;
+    });
+
+    // Close the modal when clicking outside the modal content
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            modal.style.display = 'none';
+            modal.innerHTML = `
+                <span class="close">&times;</span>
+                <img class="modal-content" id="modalImage" alt="Full-size image">
+            `;
+        }
+    });
+}
+
+// Function to open the modal with an image
+function openModalWithImage(imageSrc) {
+    const modal = document.getElementById('imageModal');
+    const modalImage = document.getElementById('modalImage');
+
+    modal.style.display = 'block';
+    modalImage.src = imageSrc;
+}
+
+// Initialize the application
+document.addEventListener('DOMContentLoaded', () => {
+    // Get necessary elements
+    const saveNoteButton = document.getElementById('saveNote');
+    const createNoteButton = document.getElementById('createNote');
+    const clearNoteButton = document.getElementById('clearNote');
+    const searchInput = document.getElementById('searchNotes');
+    const clearSearchButton = document.getElementById('clearSearch');
+    const darkModeToggle = document.getElementById('darkModeToggle');
+    const exportNotesButton = document.getElementById('exportNotes');
+    const importNotesInput = document.getElementById('importNotes');
+    
+    // Setup event listeners
+    if (saveNoteButton) {
+        saveNoteButton.addEventListener('click', saveNote);
+    }
+    
+    if (createNoteButton) {
+        createNoteButton.addEventListener('click', clearNoteForm);
+    }
+    
+    if (clearNoteButton) {
+        clearNoteButton.addEventListener('click', clearNoteForm);
+    }
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            renderNotes(searchInput.value.trim());
+        });
+    }
+    
+    if (clearSearchButton) {
+        clearSearchButton.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                renderNotes();
+            }
+        });
+    }
+    
+    // Export functionality
+    if (exportNotesButton) {
+        exportNotesButton.addEventListener('click', exportNotes);
+    }
+    
+    // Import functionality
+    if (importNotesInput) {
+        importNotesInput.addEventListener('change', importNotes);
+    }
+    
+    // Dark mode handling
+    if (darkModeToggle) {
+        // Load dark mode preference from localStorage
+        if (localStorage.getItem('darkMode') === 'enabled') {
+            document.body.classList.add('dark-mode');
+            darkModeToggle.checked = true;
+        }
+        
+        // Toggle dark mode on checkbox change
+        darkModeToggle.addEventListener('change', () => {
+            if (darkModeToggle.checked) {
+                document.body.classList.add('dark-mode');
+                localStorage.setItem('darkMode', 'enabled');
+            } else {
+                document.body.classList.remove('dark-mode');
+                localStorage.setItem('darkMode', 'disabled');
+            }
+        });
+    }
+    
+    // Add responsive handling
+    window.addEventListener('resize', handleResponsiveLayout);
+    
+    // Initialize app
+    loadNotesFromLocalStorage();
+    renderNotes();
+    handleResponsiveLayout();
+    
+    // Handle file uploads and display them in the preview section
+    document.getElementById('uploadFiles').addEventListener('change', (event) => {
+        const files = event.target.files;
+        const filePreview = document.getElementById('filePreview');
+
+        if (files.length > 0) {
+            const uploadedFiles = Array.from(files).map((file) => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+            }));
+
+            // Update the file preview section
+            filePreview.innerHTML = `
+                <ul>
+                    ${uploadedFiles
+                        .map(
+                            (file) =>
+                                `<li>${file.name} (${(file.size / 1024).toFixed(2)} KB) - ${file.type}</li>`
+                        )
+                        .join('')}
+                </ul>
+            `;
+        } else {
+            filePreview.innerHTML = '<p>No files uploaded yet.</p>';
+        }
+    });
+
+    // Handle file uploads
+    document.getElementById('uploadFiles').addEventListener('change', (event) => {
+        const files = event.target.files;
+        if (files.length > 0) {
+            const uploadedFiles = Array.from(files).map((file) => ({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+            }));
+
+            // Log the uploaded files (for now)
+            console.log('Uploaded files:', uploadedFiles);
+
+            // Example: Display file names in an alert
+            const fileNames = uploadedFiles.map((file) => file.name).join('\n');
+            alert(`Uploaded files:\n${fileNames}`);
+
+            // TODO: Attach files to a note or display them in the UI
+        }
+    });
+
+    setupModalCloseHandler();
+    document.querySelectorAll('.note-image').forEach((image) => {
+        image.addEventListener('click', () => {
+            openModalWithImage(image.src);
+        });
+    });
+});

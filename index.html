@@ -6,51 +6,126 @@
     <title>Notepad App</title>
     <link rel="stylesheet" href="styles/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
     <header>
-        <h1>Notepad App</h1>
-        <label class="switch">
-            <input type="checkbox" id="darkModeToggle">
-            <span class="slider round"></span>
-        </label>
-    </header>
-    <div id="app">
-        <div class="search-container">
-            <input type="text" id="searchNotes" placeholder="Search Notes by Title or Content" />
-            <button id="clearSearch" class="button">Clear</button>
+        <h1>Notepad</h1>
+        <div class="header-actions">
+            <label class="switch" title="Toggle Dark Mode">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="slider round"></span>
+            </label>
+            <span class="toggle-label">Dark Mode</span> <!-- Add this label -->
         </div>
-        <select id="sortNotes">
-            <option value="title">Sort by Title</option>
-            <option value="date">Sort by Date</option>
-        </select>
-        <select id="filterCategory">
-            <option value="">Filter by Category</option>
-            <option value="general">General</option>
-            <option value="work">Work</option>
-            <option value="personal">Personal</option>
-        </select>
-        <input type="text" id="noteTitle" placeholder="Note Title" />
-        <select id="noteCategory">
-            <option value="general">General</option>
-            <option value="work">Work</option>
-            <option value="personal">Personal</option>
-        </select>
-        <input type="text" id="noteTags" placeholder="Note Tags (comma separated)" />
-        <textarea id="notepad" placeholder="Start typing..."></textarea>
-        <button id="createNote" class="button">Create Note</button>
-        <button id="saveNote" class="button">Save Note</button>
-        <button id="clearNote" class="button">Clear</button>
-        <button id="exportNotes" class="button">Export Notes</button>
-        <input type="file" id="importNotes" class="button" />
-        <ul id="notesList"></ul>
+    </header>
+    
+    <div id="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Search & Filter Controls -->
+            <div class="controls">
+                <div class="search-container">
+                    <input type="text" id="searchNotes" placeholder="Search notes..." />
+                    <button id="clearSearch" title="Clear search">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="filter-row">
+                    <select id="sortNotes">
+                        <option value="title">Sort by Title</option>
+                        <option value="date">Sort by Date</option>
+                    </select>
+                    <select id="filterCategory">
+                        <option value="">All Categories</option>
+                        <option value="general">General</option>
+                        <option value="work">Work</option>
+                        <option value="personal">Personal</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Notes List -->
+            <div class="notes-container">
+                <div id="loadingSpinner" style="display: none;">
+                    <div class="spinner"></div>
+                    <span>Loading notes...</span>
+                </div>
+                <ul id="notesList">
+                    <!-- Example of a note item without a delete button -->
+                    <li class="note-item">
+                        <span class="note-title">Note Title</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Editor Area -->
+        <div class="editor">
+            <div class="editor-header">
+                <div class="title-row">
+                    <input type="text" id="noteTitle" placeholder="Note title" />
+                </div>
+                <div class="meta-row">
+                    <select id="noteCategory">
+                        <option value="general">General</option>
+                        <option value="work">Work</option>
+                        <option value="personal">Personal</option>
+                    </select>
+                    <input type="text" id="noteTags" placeholder="Tags (comma separated)" />
+                </div>
+            </div>
+            
+            <div class="editor-content">
+                <textarea id="notepad" placeholder="Write your note here..."></textarea>
+                
+                <div class="editor-actions">
+                    <button id="saveNote" class="button button-primary">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button id="createNote" class="button button-primary">
+                        <i class="fas fa-plus"></i> New Note
+                    </button>
+                    <button id="clearNote" class="button button-secondary">
+                        <i class="fas fa-eraser"></i> Clear
+                    </button>
+                    <!-- New Upload Button -->
+                    <label for="uploadFiles" class="button button-secondary">
+                        <i class="fas fa-upload"></i> Upload Files/Photos
+                    </label>
+                    <input type="file" id="uploadFiles" accept="image/*,application/pdf" style="display: none;" multiple />
+                </div>
+            </div>
+            
+            <div id="filePreview" class="file-preview">
+                <p>No files uploaded yet.</p>
+            </div>
+            
+            <div class="file-actions">
+                <button id="exportNotes" class="button button-secondary">
+                    <i class="fas fa-download"></i> Export Notes
+                </button>
+                <div class="import-container">
+                    <label for="importNotes" class="button button-secondary import-label">
+                        <i class="fas fa-upload"></i> Import Notes
+                    </label>
+                    <input type="file" id="importNotes" accept=".json" />
+                </div>
+            </div>
+        </div>
     </div>
-    <div id="loadingSpinner" style="display: none; text-align: center;">
-        <p>Loading...</p>
+    
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage" alt="Full-size image">
     </div>
+    
     <footer>
         <p>&copy; 2025 Notepad App</p>
     </footer>
+    
     <script src="scripts/app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 </body>
 </html>
