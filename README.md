@@ -1,7 +1,7 @@
 # Notepad Application
 
 ## Overview
-This Notepad application is a simple text editor that allows users to create, edit, and save notes. It is built using HTML, CSS, and JavaScript.
+This Notepad application is a simple text editor that allows users to create, edit, and save notes. In addition to this, there is file saving funcionality with the ability to view and download files in your browser. You can also export your notes, or import new ones in .json format. It is built using HTML, CSS, and JavaScript.
 
 ## Project Structure
 ```
